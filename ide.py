@@ -2,7 +2,7 @@
 # NOTE: pass -d to this to print debugging info when the server crashes.
 from flask import Flask, render_template, url_for, request
 from subprocess import Popen, PIPE, check_call
-import sys, os, string, glob, logging
+import sys, os, string, glob, logging, pathlib
 
 app = Flask(__name__)
 
@@ -11,7 +11,7 @@ app.logger.setLevel(logging.ERROR)
 
 def compileO():
     r = check_call(['make', 'ide'])
-    print("o-ide: " + "".join(glob.glob("*/o-ide*")))
+    print("o-ide: " + "".join(glob.glob("oide*")))
     if r != 0:
         print("O code could not be compiled. Error: " + r)
         raise RuntimeError("Could not compile O interpreter")
@@ -21,7 +21,7 @@ def index():
     url_for('static', filename='logo.ico')
     if request.method == 'POST':
         #Check files that start with 'o-ide*'
-        files = glob.glob("*/o-ide*")
+        files = glob.glob("oide*")
         print(files)
         #Check if C was compiled
         if len(files) < 1:
@@ -30,28 +30,31 @@ def index():
         #Run code
         code = request.form['code']
         input = request.form['input'].replace('\r\n', '\n')
+        if input is None: input = ""
         print('Got code:', code, 'input:', input)
         print('Running O code...')
-        p = Popen([files[0], '-e', code], stdout=PIPE, stderr=PIPE, stdin=PIPE, universal_newlines=True)
+        p = Popen(['./oide', '-e', code], stdout=PIPE, stderr=PIPE, stdin=PIPE, universal_newlines=True)
         output, error = p.communicate(input)
         #Output to IDE
-        print('Output:', output, 'error:', error)
         if p.returncode:
+            print('Output:', output, 'error:', error)
             return render_template('error.html', code=code, input=input, error=error)
         else:
+            print('Output:', output, 'stack:', error)
             return render_template('code.html', code=code, input=input, output=output, stack=error or '[]')
     else:
         return render_template('primary.html')
 
 @app.route('/link/')
-@app.route('/link/<link>')
-def link(link='code="Error in linking code"o&input='):
+@app.route('/link/<code>/')
+@app.route('/link/<code>/<input>')
+def link(code="IkVycm9yJTIwbGlua2luZyUyMGNvZGUibw==", input=""):
     url_for('static', filename='logo.ico')
-    print('Link:', link)
-    return render_template('link.html', link=link)
+    print('Link:', code, input)
+    return render_template('link.html', code=code, input=input)
 
 if __name__ == '__main__':
     print('Compiling O...')
     compileO()
     print('Starting server...')
-    app.run(debug='-d' in sys.argv[1:])
+    app.run(port=80, debug='-d' in sys.argv[1:])

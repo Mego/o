@@ -1,6 +1,9 @@
-default: build
-build:
-	gcc o.c -o o
+REGEXP := $(filter-out libregexp/test%.c,$(wildcard libregexp/*.c))
+
+.PHONY: all
+all:
+	gcc o.c $(REGEXP) -o o -lm
 ide:
-	mkdir -p bin
-	gcc o.c -DIDE -o bin/o-ide
+	gcc o.c $(REGEXP) -DIDE -o oide -lm
+clean:
+	rm *.exe
